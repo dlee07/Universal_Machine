@@ -1,0 +1,249 @@
+x/*
+			Segment.c
+
+Assignment: UM
+Authors: dlee07, alau03
+
+Interface that updates the memory storage. 
+
+*/
+
+#include "segment.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <string.h>
+
+void print(Seq_T ray1);
+
+uint32_t extract(FILE *fp);
+/*
+int main(int argc, char *argv[])
+{
+	FILE *fp; 
+	if(argc == 2){
+		
+		fp = fopen(argv[1], "r");
+		
+		struct stat um;
+		stat(argv[1], &um);
+		unsigned temp = um.st_size/4;
+		
+		Seq_T test = initial_mem(fp, temp);
+		Seq_T unmap = initial_stack();
+		Maps a value to segment 1
+		int index = new_seg(test, 2, unmap);
+		printf("index %d\n", index);
+
+		new_seg(test, 3, unmap);
+		free_seg(test, &index, unmap); frees segment 1
+
+		TEST 1: test_ID should be 1
+		int test_ID = new_seg(test, 4, unmap);
+		printf("correct id %d\n", test_ID);
+		Test 2: test_ID should be now size of memory + 1
+		test_ID = new_seg(test, 5, unmap);
+		printf("NEW id %d\n", test_ID);
+		Test 3: making sure store and access works
+    	uint32_t value = 2181038081;
+    	segment_store(test, test_ID, 0, value);
+    	uint32_t return_value = seg_access(test, test_ID, 0);
+		printf("return value: %x\n", return_value);
+
+	}
+	else if(argc == 1)
+		fp = stdin;
+	
+	return EXIT_SUCCESS;
+}
+*/
+Seq_T initial_mem (FILE *input, unsigned size)
+{
+	uint32_t word = 0;
+	
+	Seq_T mem = Seq_new(0);
+	Seq_T prog = Seq_new(0);
+	Seq_addhi(mem, prog); /*adds a sequence of words to segment 0*/
+	/*extract reads it big-endian order*/
+	for(unsigned i = 0; i < size; i++){
+		word = extract(input);
+		Seq_addhi(prog, (void*)(uintptr_t)word);
+
+	}
+
+	return mem;
+}
+
+Seq_T initial_stack(){
+	Seq_T Unmap = Seq_new(0);
+	return Unmap;
+}
+
+void free_mem (Seq_T mem){
+	for(int i = 0; i < Seq_length(mem); i++){
+		Seq_T temp = (Seq_T)Seq_get(mem, i);
+		Seq_free(&temp);
+	}
+
+	Seq_free(&mem);
+}
+
+void free_stack(Seq_T stack){
+	Seq_free(&stack);
+}
+
+int new_seg (Seq_T mem, int num_words, Seq_T stack){
+	int index = get_id(mem, stack);
+	//printf("new seg %d\n", index);
+	Seq_T value = Seq_new(num_words);
+	for(int i = 0; i < num_words; i++){
+		Seq_addhi(value, NULL);
+	}
+	Seq_put(mem, index, value);
+	return index;
+}
+
+int get_id (Seq_T mem, Seq_T stack){
+	//int temp = Seq_length(mem);
+	int temp2 = Seq_length (stack);
+	//printf("Mem size: %d\n", temp);
+	//printf("Stack size: %d\n", temp2);
+	/*if stack size is empty current memory is segmented*/
+	if(temp2 == 0){
+		Seq_addhi(mem, NULL);
+		int size = (Seq_length(mem) - 1);
+		return size;
+	}
+	/*there is at least 1 unmapped segment in current memory*/
+	else{
+		/*return the value at the least recently unmapped segment*/
+		 int *index = (int *)Seq_remlo(stack); 
+		 //printf("NEW INDEX: %d\n", *index);
+		 return *index;
+	}
+}
+
+uint32_t seg_load (Seq_T mem, int seg_id, int offset){
+		int size = Seq_length(mem);
+		fprintf(stderr, "size is: %u\n", size);
+		fprintf(stderr, "seg_id is: %d\n", seg_id);
+		assert(seg_id < size);
+
+		Seq_T temp = (Seq_T)Seq_get(mem, seg_id);
+		int seg_length = Seq_length(temp);
+		assert(offset < seg_length);
+
+		uint32_t value = (uint32_t)(uintptr_t)Seq_get(temp, offset);
+		return value;
+}
+
+void seg_store (Seq_T mem, int seg_id, int offset, uint32_t value){
+
+		//assert(seg_id != 0);
+		int size = Seq_length(mem);
+		//printf("SEG ID: %d\n", seg_id);
+		assert(seg_id < size);
+
+		Seq_T temp = (Seq_T)Seq_get(mem, seg_id);
+		int seg_length = Seq_length(temp);
+		assert(offset < seg_length);
+
+		Seq_put(temp, offset, (void*)(uintptr_t)value);
+} 
+
+void free_seg (Seq_T mem, uint32_t *seg_id, Seq_T stack){
+	assert(*seg_id != 0);
+	//printf("free seg\n");
+	Seq_T temp = (Seq_T)Seq_get(mem, *seg_id);
+	assert(temp != NULL);
+	Seq_free(&temp);
+	Seq_addhi(stack, seg_id);
+}
+
+void load_prog(Seq_T mem, uint32_t *pcount, uint32_t rB, uint32_t rC){
+	// fprintf(stderr, "rB: %u\n", rB);
+	// //fprintf(stderr, "rC %u\n", rC);
+	// int a = Seq_length(mem);
+	// printf("SIZE OF MEM is: %d\n", a);
+	Seq_T temp = (Seq_T)Seq_get(mem, rB);
+	// int b = Seq_length(temp);
+	// printf("SIZE OF RAY %d\n", b);
+	//fprintf(stderr, "before length is: %u\n", Seq_length(temp));
+	//uint32_t temp3 = (uint32_t)(uintptr_t)Seq_get(temp, rC);
+	//printf("Value at offset %x\n", temp3);
+	if (rB != 0) {
+			// int a = Seq_length(mem);
+			// printf("SIZE OF MEM is: %d\n", a);
+			// Seq_T temp = (Seq_T)Seq_get(mem, rB);
+			// int b = Seq_length(temp);
+			// printf("SIZE OF RAY %d\n", b);
+			Seq_T temp1 = (Seq_T)Seq_get(mem, 0);
+			Seq_free(&temp1);
+			// Seq_T temp2 = (Seq_T)Seq_get(mem, 0);
+
+			memcpy(temp1, temp, sizeof(&temp));
+
+	}
+	// else if(rB == 0){
+	// 		Seq_T temp = (Seq_T)Seq_get(mem, rB);
+	// 		uint32_t ptemp = (uint32_t)(uintptr_t)Seq_get(temp, rC);
+	// 		*pcount = ptemp;
+	// }
+	Seq_T temp2 = (Seq_T)Seq_get(mem, 0);
+	uint32_t ptemp = (uint32_t)(uintptr_t)Seq_get(temp2, rC);
+	//printf("Value at that offset is %u\n", *ptemp);
+	*pcount = ptemp;
+	
+	//Qeq_put(mem, 0, temp);
+	//Seq_T temp2 = (Seq_T)Seq_get(mem, 0);
+
+	//memcpy(temp2, temp, sizeof(&temp));
+	//fprintf(stderr, "after length is: %u\n", Seq_length(temp));
+
+	//uint32_t ptemp = (uint32_t)(uintptr_t)Seq_get(temp, (int)rC);
+	//printf("Value at that offset is %u\n", *ptemp);
+	//*pcount = ptemp;
+
+}
+/***********************************************************************
+
+					Test functions
+
+***********************************************************************/
+
+/*
+Purpose: prints values in a segment
+Arguments: Seq_T
+Return: none
+*/
+void print(Seq_T ray1){
+
+	Seq_T program = (Seq_T)Seq_get(ray1, 0);
+	for(int i = 0; i < Seq_length(program); i++){
+		printf("%x\n", (uint32_t)((uintptr_t)Seq_get(program, i)));
+	}
+
+}
+/*
+* Purpose: reads content of file in big-endian order and packs
+* 4 characters into an instruction
+* Arguments: FILE
+* Return: a uint32_t
+*/
+uint32_t extract(FILE *fp){
+	
+	int a = fgetc(fp);
+	int b = fgetc(fp);
+	int c = fgetc(fp);
+	int d = fgetc(fp);
+
+	uint64_t word = 0;
+	
+	word = Bitpack_newu(word, 8, 24, (uint64_t)a);
+	word = Bitpack_newu(word, 8, 16, (uint64_t)b);
+	word = Bitpack_newu(word, 8, 8, (uint64_t)c);
+	word = Bitpack_newu(word, 8, 0, (uint64_t)d);
+
+	return word;
+
+}

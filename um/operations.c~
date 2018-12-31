@@ -1,0 +1,110 @@
+/*
+			operations.c
+
+Assignment: UM
+Authors: dlee07, alau03
+
+Contains the implementation of the operations interface. Functions
+execute specific operations and stores results into registers and
+memory. 
+
+*/
+
+
+#include "operations.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <bitpack.h>
+#include <sys/stat.h> 
+
+/*uint32_t registers[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+int main(int argc, char *argv[])
+{	
+	(void)argc;
+	struct stat um;
+	stat(argv[1], &um);
+	unsigned temp = um.st_size/4;
+	FILE *fp =fopen(argv[1], "r");
+
+	Seq_T memory = initial_mem(fp, temp);
+	Seq_T unmapped = initial_stack();
+
+	Seq_T prog = (Seq_T)Seq_get(memory, 0);
+	uint32_t ptr; 
+	
+	for(int i = 0; i < Seq_length(prog); i++){
+		ptr = (uint32_t)(uintptr_t)Seq_get(prog, i);
+		Read_op(memory, unmapped, ptr);
+	}
+	return EXIT_SUCCESS;
+}*/
+
+uint32_t *initial_registers (){
+	uint32_t *registers =  malloc(8 * sizeof(uint32_t));
+	for (int i = 0; i < 8; i++) {
+		*(registers + i) = 0;
+	}
+	return registers;
+}
+
+void free_register (uint32_t* registers){
+	free(registers);
+}
+
+/**************************************************************************
+*							Operator functions
+*
+***************************************************************************/ 
+
+void cond_move (uint32_t  *a, uint32_t *b, uint32_t  *c){
+	if(*c != 0) {
+		*a = *b;
+	}
+	
+}
+
+void add (uint32_t  *a, uint32_t *b, uint32_t  *c){
+	*a = *b + *c;
+	// fprintf(stderr, "after add %u %u %u\n", *(ray + rA), *(ray + rB), *(ray + rC));
+}
+
+void mult (uint32_t  *a, uint32_t *b, uint32_t  *c){
+	*a = (*b * *c);
+}
+
+void divide (Seq_T ray1, Seq_T ray2, uint32_t  *a, uint32_t *b, uint32_t  *c){
+	if(*c == 0)
+		halt(ray1, ray2);
+	*a = *b / *c;
+}
+
+void bit_nand (uint32_t  *a, uint32_t *b, uint32_t  *c){
+
+	uint32_t result = 0;
+	result = *b & *c;
+	
+	result = ~result;
+	
+	*a = result;
+	
+}
+
+int halt(){
+	
+	return 1;
+}
+
+void load_value (uint32_t *ray, uint32_t value){
+	int rA = (int)Bitpack_getu((uint64_t)value, 3, 25);
+	uint32_t temp = Bitpack_getu((uint64_t)value, 25, 0);
+	*(ray + rA) = temp;
+	printf("VALUE is: %x at register %d\n", temp, rA);
+	
+}
+
+
+
+
+
+

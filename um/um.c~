@@ -1,0 +1,131 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "seq.h"
+#include "segment.h"
+#include "operations.h"
+#include "um.h"
+#include "io.h"
+#include <sys/stat.h>
+
+int main(int argc, char *argv[]) 
+{
+    
+    uint32_t pcount;
+
+    if (argc < 1) {
+        exit(EXIT_FAILURE);
+    } else if (argc == 1) {
+        fprintf(stderr, "Put filename! \n");
+    } else if (argc == 2) {
+        
+        uint32_t *reg = initial_registers();
+
+        FILE *fp = fopen(argv[1], "r");
+        struct stat um;
+        stat(argv[1], &um);
+        unsigned temp = um.st_size/4;
+        Seq_T mem = initial_mem(fp, temp);
+
+        Seq_T unmap = initial_stack();
+        
+        Seq_T prog = (Seq_T)Seq_get(mem, 0);
+
+        for(int i = 0; i < Seq_length(prog); i++){
+            pcount = (uint32_t)(uintptr_t)Seq_get(prog, i);
+            Read_op(reg, mem, unmap, pcount);
+        }
+    }
+
+    return 0;
+}
+/*
+Seq_T start_prog (FILE *input, uint32_t pcount) 
+{
+    Seq_T mem = intial_mem(input);
+    Seq_T instructions = (Seq_T)Seq_get(mem, 0);
+    pcount = (uint32_t)(uintptr_t)Seq_get(instructions, 0);
+
+    return mem;
+}
+
+
+void write_data (uint32_t, FILE *input)
+{
+
+}
+
+uint32_t * intial_pcount (Seq_T mem)
+{
+
+}
+
+void move_pcount (uint32 * pcount, Seq_T instructions){
+
+}*/
+
+void Read_op (uint32_t *ray, Seq_T mem_storage, Seq_T unmapped_IDs, 
+                    uint32_t pcount){
+
+    uint32_t op = 0;
+    
+    op = (uint32_t)Bitpack_getu((uint64_t)pcount, 4, 28);
+    
+    assert(op < 14);
+
+    uint32_t rA, rB, rC;
+
+    rA = (uint32_t)Bitpack_getu((uint64_t)pcount, 3, 6);
+    rB = (uint32_t)Bitpack_getu((uint64_t)pcount, 3, 3);
+    rC = (uint32_t)Bitpack_getu((uint64_t)pcount, 3, 0);
+
+    fprintf(stderr, "Reg num: %u %u %u\n", *(ray + rA), *(ray + rB), *(ray+rC));
+
+    switch(op){
+        case 0 : 
+            cond_move((ray + rA), (ray + rB), (ray + rC)); break;
+        case 1 :
+            *(ray + rA) = seg_access(mem_storage ,*(ray + rB), *(ray + rC)); 
+            break;
+        case 2 : 
+            seg_load(mem_storage, *(ray + rA), *(ray + rB), *(ray + rC)); 
+            break;
+        case 3 :
+            fprintf(stderr, "before add %u %u %u\n", *(ray + rA), *(ray + rB), *(ray + rC));
+            add((ray + rA), (ray + rB), (ray + rC));
+            fprintf(stderr, "after add %u %u %u\n", *(ray + rA), *(ray + rB), *(ray + rC)); break;
+        case 4 : 
+            mult((ray + rA), (ray + rB), (ray + rC)); break;
+        case 5 :
+            divide(mem_storage, unmapped_IDs, (ray + rA), (ray + rB), 
+                    (ray + rC));
+            break;
+        case 6 :
+            bit_nand((ray + rA), (ray + rB), (ray + rC));
+            break;
+        case 7 :
+            halt(mem_storage, unmapped_IDs);
+            break;
+        case 8 :
+            *(ray + rB) = new_seg (mem_storage, (int)(*(ray +rC)), 
+                                    unmapped_IDs); 
+            break;
+        case 9 :
+            free_seg (mem_storage, (ray + rC), unmapped_IDs);
+            break;
+        case 10 :
+            fprintf(stderr, "C value is: %x\n", *(ray + rC));
+            output(*(ray + rC)); break;
+        case 11 :
+            input(ray + rC); break;
+        case 12 :
+            load_prog(mem_storage, &pcount, *(ray + rB), *(ray + rC)); break;
+        case 13 :
+            load_value(ray, pcount);
+            fprintf(stderr, "after load_val %u\n", *(ray + rA)); break;
+    }
+}
+
+
+
+

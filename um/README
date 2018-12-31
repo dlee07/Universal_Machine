@@ -1,0 +1,124 @@
+Authors: Anne Lau(alau03) and Daniel Lee(dlee07)
+
+Help: From TAs and stack overflow
+
+A: Deflections from design: 
+
+1. Instead of having modules for the program counter, we just created a 
+*  uint32_t pointer and passed it to our UM Read_op function.
+
+2. The Read_op function became part of the UM module rather than the operations
+*  module for more modularity and efficiency. This way, functions from 
+*  both the operations and segment interface can be called. 
+
+3. For input and output, we created an interface called io. This interface
+*  handles output and input operations
+
+4. We took out the seg_load and seg_store functions from the operations 
+*  interface because the functions seg_store and seg_access both have 
+*  identical purposes. 
+
+
+B: Architecture 
+
+1. Segment.h - This interface represents the computer memory. The members
+of this interface contain the addresses of memory the client's program 
+used. The members of these functions know where and when to store 
+and access certain parts of the program. This interface is called by the 
+um.c main according to the appropriate op code. 
+
+2. Operations.h - This interface represents the arithmetic and logic unit.
+The members of these functions execute specific operations encoded by 
+the opcode of an instruction. The members of this function hides the 
+processes of how operations are executed from the client. This interface 
+is called by the um.c main according to the approiate op code. 
+
+3. io.h - This interface represents the input and output device of a 
+machine. The members of these functions inputs instructions into memory 
+and returns ASCII values back to the client. The members of this interface 
+hides how inputs are prepared for the machine to read and how they are 
+converted for printing. 
+
+4. um.h - This interface represents the computer machine. The members of
+these functions processes an instruction and calls certain operations 
+based on the opcode. The secret this interface holds is how the program
+is executed based on the instructions. 
+
+Interaction of modules:  The UM interface initially calls the segment
+interface to allocate enough memory to store the client's program. Then
+the UM interface calls certain operations from the operations and segment
+interface as an instruction is processed. If the operation is output and 
+input, the members of the io interface is called. The program runs until 
+the clients program is read in to the UM interface. 
+
+
+
+C: Explanation of time on 50 million instructions:
+ We printed out an instruction that loaded 2 values 500,000 times, meaning 
+ that it was 1 million instructions. The time it took was 0.24 seconds. 
+ This means that when it is 50 million instructions, the program will 
+ take 12 seconds. We think that our program might be running this fast 
+ because we store our unmapped IDs on a stack, meaning we don't run 
+ through the Sequence everytime. Additionally, we don't use pointers for 
+ our registers but instead directly access them. 
+
+D: Unit tests: 
+
+1. 50OK.um: tests if the program can run 500,000 instructions by calling 
+load value 50 million times. 
+
+2. cmov.um: tests the conditional move by loading three non-zero and 
+nonequal values into register A, B, C respectively. As a result the output
+of the value in rA should be the value in rB
+
+3. cmov0.um: tests that if the value in rC is 0, no movement in registers, 
+and rA will remain unchanged. 
+
+4. sload.um: tests the segment store and segment load functions by
+passing in three different values to three registers. Then it maps the 
+value in Register C to m[A][B]. Outputs the value. 
+It then retrieves the value at m[A][B]. The output should be the value at 
+register C, identical to the first output.
+
+5. add.um: tests the add operation by adding two values of two registers 
+and places the sum in another register. 
+
+6. mult.um: tests the multiply operation by multiplying two values of two 
+registers and places the product in another register.
+
+7. div.um: tests the divide operation by dividing two values of two 
+registers and places the quotient in an another register.
+
+8. halt.um: tests if computation stops. 
+
+9. activate.um: tests the segment mapping function by mapping two 
+segments, unmapping one segment, and making sure the next mapped segment 
+would have the ID of the recently unmapped segment
+
+10. inactivate.um: test the segment unmapping function by mapping a 
+segment and calling the unmap segment function twice. The output should 
+be abort.
+
+11. in.um: tests the file input and output functions. This function is 
+tested by calling them in other test functions. The input and output 
+should return correct values. Must be exactly the same as 
+standard input. In our .1 file we put stdin. 
+
+12. nand.um: tests the nand operation by performing the nand operation
+on two values of two different registers. Stores the result in another
+register. Values will be unprintable because it is out of range
+of ASCII values
+
+*NOTE: Load program was tested with print statements to ensure that the
+information was correctly copied, the information was mapped to segment 0
+, and the program counter was updated correctly. We printed the length 
+of m[rB] before and the length of m[0] after the move. We also printed the 
+m[rB][rC] value and made sure it was equal to m[0][rC] after the move. 
+We did not do a um test as the values loaded into m[r[B]] might not have 
+been valid instructions. 
+
+E: Time spent analyzing experiment: 10
+
+F: Time spent on design: 8 hours
+
+G: Time spent on solving problem: 28 hours
